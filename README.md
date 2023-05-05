@@ -42,7 +42,7 @@ and copy them into the subfolder `ai` you created before.
 
 ### Preparing the Model ###
 
-Once you got the actual Vicuna model file `ggml-openllama-7b-300bt-q4_0.bin`, move (or copy) it into the same subfolder `ai` where you already placed the `llama` executable.
+Once you got the actual OpenLLaMA model file `ggml-openllama-7b-300bt-q4_0.bin`, move (or copy) it into the same subfolder `ai` where you already placed the `llama` executable.
 
 > Nota bene: right now, the function node supports the given model file only - but this may easily be changed in the function source
 
