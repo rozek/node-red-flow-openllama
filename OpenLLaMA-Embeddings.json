@@ -1,0 +1,248 @@
+[
+    {
+        "id": "c97cd625c2e300fc",
+        "type": "comment",
+        "z": "50ed45470ea01d88",
+        "name": "OpenLLaMA Embeddings",
+        "info": "",
+        "x": 2110,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "c6ba9ee51a78f78a",
+        "type": "http in",
+        "z": "50ed45470ea01d88",
+        "name": "[get] /openllama-embeddings",
+        "url": "/mac-mini-m1.local/openllama-embeddings",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 2120,
+        "y": 1140,
+        "wires": [
+            [
+                "9c5adbcbe6666c2e"
+            ]
+        ]
+    },
+    {
+        "id": "3309100d234230d9",
+        "type": "function",
+        "z": "50ed45470ea01d88",
+        "name": "OpenLLaMA Embeddings",
+        "func": "(async () => {\n  let Prompt = (msg.payload || '').trim()\n  if (Prompt === '') {\n    msg.payload = 'empty or missing prompt'\n    node.send([null,msg])\n    return\n  }\n  \n/**** retrieve settings or provide defaults ****/\n\n  let Seed = parseInt(msg.seed,10)\n  if (isNaN(Seed)) { Seed = -1 }\n  \n  let Threads = parseInt(msg.threads,10)\n  if (isNaN(Threads)) { Threads = 4 }\n  Threads = Math.max(1,Threads)\n  Threads = Math.min(Threads,Math.max(1,os.cpus().length))\n\n  let Context = parseInt(msg.context,10)\n  if (isNaN(Context)) { Context = 512 }\n  Context = Math.max(0,Math.min(Context,2048))\n\n  Prompt = Prompt.replace(/\"/g,'\\\\\"')\n\n/**** combine all these settings into a command ****/\n\n  let Command = ( 'cd ai && ' +\n    './llama-embeddings --model ./ggml-openllama-7b-300bt-q4_0.bin --mlock ' +\n    ' --ctx_size ' + Context + \n    ' --threads ' + Threads +\n    ' --seed ' + Seed +\n    ' --prompt \"' + Prompt + '\"'\n  )\n\n/**** extract actual reponse from command output ****/\n\n  function ResponseFrom (Text) {\n    let HeaderLength = Text.indexOf('system_info')\n    Text = Text.slice(HeaderLength + 1)\n      .replace(/^[^\\n]*\\n/,'')\n\n    let TrailerIndex = Text.indexOf('\\n\\nllama_print_timings')\n    Text = Text.slice(0,TrailerIndex)\n\n    return Text\n  }\n\n/**** now calculate embeddings for the given prompt ****/\n  \n  let { stdout,stderr, StatusCode,Signal } = child_process.spawnSync(\n    'bash', [], { input:Command }\n  )\n  \n  stdout = stdout.toString().trim()\n  stderr = stderr.toString().trim()\n\n  switch (true) {\n    case (StatusCode == null):\n    case (StatusCode === 0):\n      msg.statusCode = (stdout === '' ? 204 : 200)\n      msg.payload    = ResponseFrom(stdout)\n      break\n    default:\n      msg.statusCode = 500 + StatusCode\n      msg.payload    = (stdout === '' ? '' : '>>>> stdout >>>>\\n' + stdout + '\\n') +\n                       '>>>> stderr >>>>\\n' + stderr +\n                       (Signal == null ? '' : '\\n' + Signal)\n      break\n  }\n\n  node.send([msg,null])\n})()\n",
+        "outputs": 2,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [
+            {
+                "var": "os",
+                "module": "os"
+            },
+            {
+                "var": "child_process",
+                "module": "child_process"
+            }
+        ],
+        "x": 2310,
+        "y": 1200,
+        "wires": [
+            [
+                "2f0c7183f2f7345a",
+                "e2e106067a922579"
+            ],
+            [
+                "69688cb5e6f779ee"
+            ]
+        ]
+    },
+    {
+        "id": "30a3479b0a0440f7",
+        "type": "debug",
+        "z": "50ed45470ea01d88",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "'Prompt: \"' & msg.payload & '\"'",
+        "targetType": "jsonata",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2140,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "9c5adbcbe6666c2e",
+        "type": "reusable",
+        "z": "50ed45470ea01d88",
+        "name": "",
+        "target": "basics:basic auth",
+        "outputs": 2,
+        "x": 2350,
+        "y": 1140,
+        "wires": [
+            [
+                "be6798ed77b5f269"
+            ],
+            [
+                "719406de2c0da527"
+            ]
+        ],
+        "outputLabels": [
+            "authorized",
+            "unauthorized"
+        ]
+    },
+    {
+        "id": "719406de2c0da527",
+        "type": "http response",
+        "z": "50ed45470ea01d88",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 2510,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "69688cb5e6f779ee",
+        "type": "change",
+        "z": "50ed45470ea01d88",
+        "name": "400",
+        "rules": [
+            {
+                "t": "set",
+                "p": "statusCode",
+                "pt": "msg",
+                "to": "400",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2510,
+        "y": 1240,
+        "wires": [
+            [
+                "719406de2c0da527"
+            ]
+        ]
+    },
+    {
+        "id": "2f0c7183f2f7345a",
+        "type": "change",
+        "z": "50ed45470ea01d88",
+        "name": "200",
+        "rules": [
+            {
+                "t": "set",
+                "p": "statusCode",
+                "pt": "msg",
+                "to": "200",
+                "tot": "num"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2510,
+        "y": 1200,
+        "wires": [
+            [
+                "719406de2c0da527"
+            ]
+        ]
+    },
+    {
+        "id": "e2e106067a922579",
+        "type": "debug",
+        "z": "50ed45470ea01d88",
+        "name": "",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "'Response: \"' & msg.payload & '\"'",
+        "targetType": "jsonata",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 2340,
+        "y": 1280,
+        "wires": []
+    },
+    {
+        "id": "705e02651079f08b",
+        "type": "comment",
+        "z": "50ed45470ea01d88",
+        "name": "cwd = server installation folder",
+        "info": "",
+        "x": 2430,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "be6798ed77b5f269",
+        "type": "change",
+        "z": "50ed45470ea01d88",
+        "name": "parse query",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "req.query.prompt",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "seed",
+                "pt": "msg",
+                "to": "req.query.seed",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "threads",
+                "pt": "msg",
+                "to": "req.query.threads",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "model",
+                "pt": "msg",
+                "to": "req.query.model",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "context",
+                "pt": "msg",
+                "to": "req.query.context",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 2110,
+        "y": 1200,
+        "wires": [
+            [
+                "30a3479b0a0440f7",
+                "3309100d234230d9"
+            ]
+        ]
+    }
+]
